@@ -4,6 +4,8 @@ const app = require('express')();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
+var schedule = require('node-schedule');
+
 // Empty games object
 var games = {};
 
@@ -135,8 +137,13 @@ io.on('connection', (socket) => {
   });
 });
 
-http.listen(8081, () => {
-  if (printLogs) console.log('listening on *:3000');
+let port = process.env.PORT;
+if (port == null || port == "") {
+  port = 8000;
+}
+
+http.listen(port, () => {
+  if (printLogs) console.log('listening on *:8000');
 
   // Set up clearing out of games at 2am
   var rule = new schedule.RecurrenceRule();
