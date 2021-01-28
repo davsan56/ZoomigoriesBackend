@@ -143,7 +143,7 @@ if (port == null || port == "") {
 }
 
 http.listen(port, () => {
-  if (printLogs) console.log('listening on *:8000');
+  if (printLogs) console.log('listening on *:' + port);
 
   // Set up clearing out of games at 2am
   var rule = new schedule.RecurrenceRule();
