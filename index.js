@@ -7,12 +7,15 @@ const io = require('socket.io')(http);
 // Empty games object
 var games = {};
 
+// Debug variable to hide/show console.logs
+let printLogs = true
+
 // On a connection
 io.on('connection', (socket) => {
-  console.log('a user connected');
+  if (printLogs) console.log('a user connected');
 
   socket.on('disconnect', () => {
-    console.log("a user disconnected")
+    if (printLogs) console.log("a user disconnected")
     disconnectUser(socket)
   });
 
@@ -43,8 +46,8 @@ io.on('connection', (socket) => {
     // Join the game room
     socket.join(code);
 
-    console.log("game created with code: " + code);
-    console.log(games)
+    if (printLogs) console.log("game created with code: " + code);
+    if (printLogs) console.log(games)
 
     // Broadcast code
     io.in(code).emit("gameCreated", {code: code, game: games[code]});
@@ -53,7 +56,7 @@ io.on('connection', (socket) => {
   // When a player wants to join a game
   socket.on('joinGame', (data) => {
     // Make sure the provided game is actually a game
-    console.log(games);
+    if (printLogs) console.log(games);
     if (games[data.code]) {
       // Make sure the same user isn't trying to join the room twice
       if (games[data.code].users.findIndex(x => x["id"] == socket.id) < 0) {
@@ -69,8 +72,8 @@ io.on('connection', (socket) => {
           }
         );
 
-        console.log("user joined room " + data.code + " with name " + data.name + " with id " + socket.id);
-        console.log(games);
+        if (printLogs) console.log("user joined room " + data.code + " with name " + data.name + " with id " + socket.id);
+        if (printLogs) console.log(games);
 
         io.in(data.code).emit("userJoined", {code: data.code, game: games[data.code]});
       } else {
@@ -78,13 +81,13 @@ io.on('connection', (socket) => {
         // Name taken
         io.to(socket.id).emit('nameTaken', "That name is already taken");
 
-        console.log("someone tried to join room with name taken");
+        if (printLogs) console.log("someone tried to join room with name taken");
       }
     } else {
       // Invalid game
       io.to(socket.id).emit('invalidGame', "That game code does not exist");
 
-      console.log("someone tried to join room that doesnt exist");
+      if (printLogs) console.log("someone tried to join room that doesnt exist");
     }
   });
 
@@ -92,8 +95,8 @@ io.on('connection', (socket) => {
   socket.on('newRandomLetter', (data) => {
     games[data.code].letter = data.letter;
 
-    console.log("new letter picked: " + data.letter);
-    console.log(games);
+    if (printLogs) console.log("new letter picked: " + data.letter);
+    if (printLogs) console.log(games);
 
     io.in(data.code).emit('newRandomLetter', data.letter);
   });
@@ -111,7 +114,7 @@ io.on('connection', (socket) => {
 
   // When a game is ready to start
   socket.on('startGame', (data) => {
-    console.log("the game " + data.code + " has started using list number " + data.listNumber);
+    if (printLogs) console.log("the game " + data.code + " has started using list number " + data.listNumber);
 
     io.in(data.code).emit('gameStarted', {game: games[data.code], listNumber: data.listNumber})
   });
@@ -125,15 +128,26 @@ io.on('connection', (socket) => {
       // Unready the user
       games[data.code].users[index].ready = false;
 
-      console.log(games[data.code].users[index].displayName + " submitted a score of " + data.score)
+      if (printLogs) console.log(games[data.code].users[index].displayName + " submitted a score of " + data.score)
 
       io.in(data.code).emit('scoreUpdate', {game: games[data.code]});
     }
   });
 });
 
-http.listen(3000, () => {
-  console.log('listening on *:3000');
+http.listen(8081, () => {
+  if (printLogs) console.log('listening on *:3000');
+
+  // Set up clearing out of games at 2am
+  var rule = new schedule.RecurrenceRule();
+  rule.hour = 2;
+  rule.minute = 0;
+ 
+  var j = schedule.scheduleJob(rule, function(){
+     games = {};
+     if (printLogs) console.log("Cleared out all the games on %s:", new Date());
+     if (printLogs) console.log(games);
+   });
 });
 
 function createCode() {
@@ -152,8 +166,8 @@ function disconnectUser(socket) {
   for (game in games) {
     var index = games[game].users.findIndex(x => x["id"] == socket.id);
     if (index > -1) {
-      console.log(games[game])
-      console.log("user with name " + games[game].users[index].displayName + " left game " + game)
+      if (printLogs) console.log(games[game])
+      if (printLogs) console.log("user with name " + games[game].users[index].displayName + " left game " + game)
       // Save user id
       let idOfUserThatLeft = games[game].users[index].id
 
@@ -169,14 +183,14 @@ function disconnectUser(socket) {
         }
       }
 
-      console.log(games[game])
+      if (printLogs) console.log(games[game])
 
       // Emit that someone left so UI can update
       io.in(game).emit("userDisconnected", {game: games[game]});
       // Remove the game if there are no users
       if (games[game].users.length == 0) {
         delete games[game];
-        console.log("game " + game + " had no more players and was deleted")
+        if (printLogs) console.log("game " + game + " had no more players and was deleted")
       } else {
         // Want to let the user know someone disconnected and tell them to send the code again
         // io.to(game).emit('new', {name: game, board: games[game].board, players: 1,
