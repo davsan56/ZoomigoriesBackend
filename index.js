@@ -12,6 +12,9 @@ var games = {};
 // Debug variable to hide/show console.logs
 let printLogs = true
 
+// List of swears to filter out for code
+const SwearWords = ["C#CK", "C#NT", "D#CK", "F#CK", "K#KE", "N#GG", "SH#T"];
+
 // On a connection
 io.on('connection', (socket) => {
   if (printLogs) console.log('a user connected');
@@ -100,6 +103,7 @@ io.on('connection', (socket) => {
     if (printLogs) console.log("new letter picked: " + data.letter);
     if (printLogs) console.log(games);
 
+    // Send new letter to room
     io.in(data.code).emit('newRandomLetter', data.letter);
   });
 
@@ -110,6 +114,7 @@ io.on('connection', (socket) => {
       // Mark them as ready
       games[data.code].users[index].ready = data.isReady;
 
+      // Send updated user list to room
       io.in(data.code).emit('readiedUp', {game: games[data.code]});
     }
   });
@@ -118,6 +123,12 @@ io.on('connection', (socket) => {
   socket.on('startGame', (data) => {
     if (printLogs) console.log("the game " + data.code + " has started using list number " + data.listNumber);
 
+    // Mark everyone as not ready
+    games[data.code].users.forEach(function(part, index, array) {
+      games[data.code].users[index].ready = false
+    });
+
+    // Send start game to room so everyone starts
     io.in(data.code).emit('gameStarted', {game: games[data.code], listNumber: data.listNumber})
   });
 
@@ -132,6 +143,7 @@ io.on('connection', (socket) => {
 
       if (printLogs) console.log(games[data.code].users[index].displayName + " submitted a score of " + data.score)
 
+      // Send updated game with new scores
       io.in(data.code).emit('scoreUpdate', {game: games[data.code]});
     }
   });
@@ -157,14 +169,22 @@ http.listen(port, () => {
    });
 });
 
+// Generates a 4 letter game code
 function createCode() {
   var code = "";
-  for (i = 0; i < 4; i++) {
-    let number = Math.floor(Math.random() * 26) + 65;
-    let charFromNumber = String.fromCharCode(number);
-    code = code + charFromNumber;
+  while (hasBadWord(code) || code.length == 0) {
+    for (i = 0; i < 4; i++) {
+      let number = Math.floor(Math.random() * 26) + 65;
+      let charFromNumber = String.fromCharCode(number);
+      code = code + charFromNumber;
+    }
   }
   return code;
+}
+
+// Returns true if the code has a swear
+function hasBadWord(code) {
+  return SwearWords.some(word => code.includes(word));
 }
 
 // Called when the user disconnects from server or starts a new room
