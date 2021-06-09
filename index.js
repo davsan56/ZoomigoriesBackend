@@ -147,6 +147,18 @@ io.on('connection', (socket) => {
       io.in(data.code).emit('scoreUpdate', {game: games[data.code]});
     }
   });
+
+  // When a user is starting to score
+  // Trying this to see if it doesn't kick people out
+  socket.on('scoring', (data) => {
+    var index = games[data.code].users.findIndex(x => x["id"] == socket.id);
+    if (index > -1) {
+      if (printLogs) console.log(games[data.code].users[index].displayName + " is now scoring")
+
+      // Send updated game with new scores
+      io.in(data.code).emit('scoring');
+    }
+  });
 });
 
 let port = process.env.PORT;
